@@ -29,15 +29,15 @@ C_m(:,:,2) = 0.07^2*eye(2,2);
 m_true = [0.2;0.17]; 
 
 %% Experiment 2
-% Priors with the same means and variances, but opposite correlations
-% corr = 0.85;
-% 
-% mu_m(:,1) = [0.25 ; 0.25];
-% C_m(:,:,1) = 0.07^2*[  1   corr; corr   1];
-% mu_m(:,2) = [0.25 ; 0.25];
-% C_m(:,:,2) = 0.07^2*[  1   -corr; -corr   1];
-% 
-% m_true = [0.33;0.33];
+%Priors with the same means and variances, but opposite correlations
+corr = 0.85;
+
+mu_m(:,1) = [0.25 ; 0.25];
+C_m(:,:,1) = 0.07^2*[  1   corr; corr   1];
+mu_m(:,2) = [0.25 ; 0.25];
+C_m(:,:,2) = 0.07^2*[  1   -corr; -corr   1];
+
+m_true = [0.33;0.33];
 
 
 %% Simulation of data
@@ -58,7 +58,7 @@ d_obs = double(g(m_true));
 % PARAMETER - Signal to Noise %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     Signal to Noise
 signal2noise = 2;
 %signal2noise = 5;
-%signal2noise = 10;
+signal2noise = 10;
 
 sgm = sqrt(mean(d_obs.^2) / signal2noise );
 C_d = sgm^2*eye(dim);
