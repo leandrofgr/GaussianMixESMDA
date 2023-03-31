@@ -206,11 +206,7 @@ L(:,:,2) = chol(C_m(:,:,2))';
 
 for f = 1:2*n_e
     
-    k(f) = 1;
-    k_sort = rand;
-    if k_sort >  lambda(1) 
-        k(f) = 2;
-    end
+    k(f) = (rand <= lambda(2) ) + 1;       
 
     m(:,f) = mu_m(:,k(f)) + L(:,:,k(f)) * randn(size(m_true));     
     
@@ -245,11 +241,7 @@ C_md(:,:,2) = C_md2;
 
 for f = 1:size(m,2)
     
-    l_(f) = 1;
-    l_sort = rand;
-    if l_sort >  lambda_esmda(1) 
-        l_(f) = 2;
-    end
+    l_(f) = (rand <= lambda_esmda(2) ) + 1;               
         
     m(:,f) = mu_m(:,l_(f)) + L(:,:,l_(f))*inv( L(:,:,k(f)) ) * ( m(:,f) - mu_m(:,k(f)) );
     
@@ -286,7 +278,7 @@ mu_m_ = mu_m;
 
 for f = 1:2*n_e
     
-    k(f) = (rand <= lambda(1) ) + 1;       
+    k(f) = (rand <= lambda(2) ) + 1;       
     m(:,f) = mu_m_(:,k(f)) + L(:,:,k(f)) * randn(size(m_true));     
     
 end
@@ -295,17 +287,13 @@ m1 = m(:,k==1);
 m2 = m(:,k==2);
 
 for it = 1:n_it
-
-    lambda_esmda(1) = lambda(1) * mvnpdf( d_obs, double( g(mu_m_(:,1)) ), C_dd1 + C_d  );
-    lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( g(mu_m_(:,2)) ), C_dd2 + C_d  );
-    lambda_esmda = lambda_esmda/sum(lambda_esmda);
     
     L(:,:,1) = chol(C_m_(:,:,1))';
     L(:,:,2) = chol(C_m_(:,:,2))';
     
     for f = 1:size(m,2)
                 
-        l(f) = (rand <= lambda_esmda(1) ) + 1;               
+        l_(f) = (rand <= lambda_esmda(2) ) + 1;               
         m(:,f) = mu_m_(:,l_(f)) + L(:,:,l_(f))*inv( L(:,:,k(f)) ) * ( m(:,f) - mu_m_(:,k(f)) );
                 
     end
@@ -342,6 +330,10 @@ for it = 1:n_it
     
     m1 = m1 + C_md1 * inv( C_dd1 + (n_it) * C_d ) * ( d_per1 - d1 ) ;    
     m2 = m2 + C_md2 * inv( C_dd2 + (n_it) * C_d ) * ( d_per2 - d2 ) ;        
+    
+    lambda_esmda(1) = lambda(1) * mvnpdf( d_obs, double( g(mu_m_(:,1)) ), C_dd1 + C_d  );
+    lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( g(mu_m_(:,2)) ), C_dd2 + C_d  );
+    lambda_esmda = lambda_esmda/sum(lambda_esmda);    
         
 end
 
