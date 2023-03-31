@@ -197,7 +197,6 @@ P_posterior_esmda_gm = reshape(P_posterior_esmda_gm,points,points);
 clear m
 n_e = 1000;
 
-
 lambda_esmda(1) = lambda(1) * mvnpdf( d_obs, double( g(mu_m(:,1)) ), C_dd1 + C_d  );
 lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( g(mu_m(:,2)) ), C_dd2 + C_d  );
 lambda_esmda = lambda_esmda/sum(lambda_esmda);
@@ -287,12 +286,7 @@ mu_m_ = mu_m;
 
 for f = 1:2*n_e
     
-    k(f) = 1;
-    k_sort = rand;
-    if k_sort >  lambda(1) 
-        k(f) = 2;
-    end
-
+    k(f) = (rand <= lambda(1) ) + 1;       
     m(:,f) = mu_m_(:,k(f)) + L(:,:,k(f)) * randn(size(m_true));     
     
 end
@@ -310,13 +304,8 @@ for it = 1:n_it
     L(:,:,2) = chol(C_m_(:,:,2))';
     
     for f = 1:size(m,2)
-        
-        l_(f) = 1;
-        l_sort = rand;
-        if l_sort >  lambda_esmda(1)
-            l_(f) = 2;
-        end
-        
+                
+        l(f) = (rand <= lambda_esmda(1) ) + 1;               
         m(:,f) = mu_m_(:,l_(f)) + L(:,:,l_(f))*inv( L(:,:,k(f)) ) * ( m(:,f) - mu_m_(:,k(f)) );
                 
     end
