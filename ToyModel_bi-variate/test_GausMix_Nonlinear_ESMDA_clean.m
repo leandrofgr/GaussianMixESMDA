@@ -30,14 +30,14 @@ m_true = [0.2;0.17];
 
 %% Experiment 2
 %Priors with the same means and variances, but opposite correlations
-corr = 0.85;
-
-mu_m(:,1) = [0.25 ; 0.25];
-C_m(:,:,1) = 0.07^2*[  1   corr; corr   1];
-mu_m(:,2) = [0.25 ; 0.25];
-C_m(:,:,2) = 0.07^2*[  1   -corr; -corr   1];
-
-m_true = [0.33;0.33];
+% corr = 0.85;
+% 
+% mu_m(:,1) = [0.25 ; 0.25];
+% C_m(:,:,1) = 0.07^2*[  1   corr; corr   1];
+% mu_m(:,2) = [0.25 ; 0.25];
+% C_m(:,:,2) = 0.07^2*[  1   -corr; -corr   1];
+% 
+% m_true = [0.33;0.33];
 
 
 %% Simulation of data
@@ -58,7 +58,7 @@ d_obs = double(g(m_true));
 % PARAMETER - Signal to Noise %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     Signal to Noise
 signal2noise = 2;
 %signal2noise = 5;
-signal2noise = 10;
+%signal2noise = 10;
 
 sgm = sqrt(mean(d_obs.^2) / signal2noise );
 C_d = sgm^2*eye(dim);
@@ -290,16 +290,7 @@ for it = 1:n_it
     
     L(:,:,1) = chol(C_m_(:,:,1))';
     L(:,:,2) = chol(C_m_(:,:,2))';
-    
-    for f = 1:size(m,2)
-                
-        l_(f) = (rand <= lambda_esmda(2) ) + 1;               
-        m(:,f) = mu_m_(:,l_(f)) + L(:,:,l_(f))*inv( L(:,:,k(f)) ) * ( m(:,f) - mu_m_(:,k(f)) );
-                
-    end
-    
-    k = l_;
-    
+        
     m1 = m(:,l_==1);
     m2 = m(:,l_==2);
     
@@ -334,6 +325,15 @@ for it = 1:n_it
     lambda_esmda(1) = lambda(1) * mvnpdf( d_obs, double( g(mu_m_(:,1)) ), C_dd1 + C_d  );
     lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( g(mu_m_(:,2)) ), C_dd2 + C_d  );
     lambda_esmda = lambda_esmda/sum(lambda_esmda);    
+    
+    for f = 1:size(m,2)
+                
+        l_(f) = (rand <= lambda_esmda(2) ) + 1;               
+        m(:,f) = mu_m_(:,l_(f)) + L(:,:,l_(f))*inv( L(:,:,k(f)) ) * ( m(:,f) - mu_m_(:,k(f)) );
+                
+    end
+    
+    k = l_;    
         
 end
 
