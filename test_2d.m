@@ -133,10 +133,13 @@ n_it = 5;
 window_size = 3;
 n_facies = 2^(3^2);
 
-P_hor = [0.75 0.25;
+P_hor = [0.9 0.15;
+         0.15 0.85];
+P_ver = [0.75 0.25;
          0.25 0.75];
-P_ver = P_hor;
 
+
+initial_facies = simulate_markov_2Dchain(P_hor,P_ver,ones(I,J,2));
 
 % ALL POSSIBLE FACIES CONFIGS FROM CHAT GPT
 configurations = dec2bin(0:2^(window_size * window_size )-1)-'0';

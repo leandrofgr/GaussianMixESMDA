@@ -7,7 +7,7 @@ addpath('Functions')
 %% LOAD FACIES MODEL, MODIFY ITS SIZE AND 
 facies = load('facies_model.mat','facies').facies;
 facies = facies(20:40,72:92);
-facies = imresize(facies,0.1);
+facies = imresize(facies,1);
 facies(facies>1.5) = 2;
 
 facies(facies<=1.5) = 1;
@@ -41,7 +41,7 @@ porosity = reshape(porosity, I,J);
 
 %% SIMULATE OBSERVATIONS AND CONSTRUCT THE FORWARD MODEL]
 
-n_wells_per_dim = 1;
+n_wells_per_dim = 4;
 
 positions = linspace(1,I,n_wells_per_dim + 2);
 positions = round(positions(2:end-1));
@@ -119,7 +119,13 @@ title('ESMDA Unimodal')
 % fácies. Com objetivo de calcular as matrizes de covariance baseado numa
 % estatística,
 % Durante a exeução do Dovera, a quantidade de configurações de fácies é
-% enorme, muito maior que a quantidade de model
+% enorme, muito maior que a quantidade de modelos do ensemble. O que
+% inviabiliza a aplicação de tal abordagem no ESMDA. 
+
+% Solução 1: Tentar pixel a pixel
+% Solução 2: Tentar um esquema de importance sampling. No lugar de
+% trabalhar com todas as possíveis combinações de facies, trabalha apenas
+% com uma quantidade inicialmente amostrada da prior. 
 
 n_e = 1000;
 n_it = 5;
@@ -131,6 +137,8 @@ P_hor = [0.75 0.25;
          0.25 0.75];
 P_ver = P_hor;
 
+
+ini= simulate_markov_2Dchain(P_hor,P_ver,ones(window_size,window_size,2));
 
 % ALL POSSIBLE FACIES CONFIGS FROM CHAT GPT
 configurations = dec2bin(0:2^(window_size * window_size )-1)-'0';
