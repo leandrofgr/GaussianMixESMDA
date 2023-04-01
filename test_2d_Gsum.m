@@ -6,8 +6,8 @@ addpath('Functions')
 
 %% LOAD FACIES MODEL, MODIFY ITS SIZE AND 
 facies = load('facies_model.mat','facies').facies;
-facies = facies(20:40,72:92);
-facies = imresize(facies,0.2);
+facies = facies(22:42,72:92);
+facies = imresize(facies,0.5);
 facies(facies>1.5) = 2;
 
 facies(facies<=1.5) = 1;
@@ -42,7 +42,7 @@ porosity = reshape(porosity, I,J);
 %% SIMULATE OBSERVATIONS AND CONSTRUCT THE FORWARD MODEL
 
 n_wells_per_dim = 2;
-n_index_around_well = 1;
+n_index_around_well = 3;
 
 positions = linspace(1,I,n_wells_per_dim + 2);
 positions = round(positions(2:end-1));
@@ -96,47 +96,57 @@ n_it = 5;
 prior_index = 2;
 
 for f = 1:n_e
-    [ m(:,f) ] = reshape( mean(mu_m) + 1*sqrt(C_m(1)) * FFT_MA_3D( correlation_function1, randn(I,J)),I*J,1);
+    simulation = FFT_MA_3D( correlation_function1, randn(4*I,4*J));
+    simulation = simulation (1:I, 1:J);
+    [ m_uni(:,f) ] = mean(mu_m) + 1*sqrt(C_m(1)) * reshape(simulation,I*J,1);
 end
 
-d = G*m;
+d = G*m_uni;
 
 for it = 1:n_it
     d_per = d_obs + sqrt(n_it) * sgm * randn(size(d_obs,1),n_e);
-    Am = m - mean(m')';
+    Am = m_uni - mean(m_uni')';
     Ad = d - mean(d')';
     C_md = Am*Ad'/(n_e-1);
     C_dd = Ad*Ad'/(n_e-1);
-    m = m + C_md * inv( C_dd + sqrt(n_it) * C_d ) * ( d_per - d ) ;
-    d = double( G*m );
+    m_uni = m_uni + C_md * inv( C_dd + sqrt(n_it) * C_d ) * ( d_per - d ) ;
+    d = double( G*m_uni );
 end
  
-m_mean_esmda_unimodal = reshape(mean(m,2),I,J);
-m_std_esmda_unimodal = reshape(std(m,[],2),I,J);
+m_mean_esmda_unimodal = reshape(mean(m_uni,2),I,J);
+m_std_esmda_unimodal = reshape(std(m_uni,[],2),I,J);
 
 f = figure;
-f.Position = [500 500 2200 500];
-subplot(141)
+f.Position = [500 0 2200 1000];
+subplot(241)
 imagesc(facies)
 hold all
 scatter(X_positions,Y_positions,15,'r')
 title('Facies ref model')
-subplot(142)
+subplot(242)
 imagesc(porosity)
 hold all
 scatter(X_positions,Y_positions,15,'r')
+caxis([0.06 0.23])
 title('Porosity ref model')
-subplot(143)
+subplot(243)
 imagesc(m_mean_esmda_unimodal)
 hold all
 scatter(X_positions,Y_positions,15,'r')
+caxis([0.06 0.23])
 title('ESMDA Unimodal')
-subplot(144)
+subplot(244)
 imagesc(m_std_esmda_unimodal)
 hold all
 scatter(X_positions,Y_positions,15,'r')
 title('ESMDA Unimodal')
 caxis([0 0.02])
+subplot(246)
+histogram(porosity)
+xlim([0.06 0.23])
+subplot(247)
+histogram(m_uni(:))
+xlim([0.06 0.23])
 
 
 %% GaussianMix ESMDA - Inspired by GM ENKF Dovera)
@@ -157,8 +167,8 @@ caxis([0 0.02])
 
 n_e = 100;
 n_it = 1;
-
-window_size = 3;
+n_rep = 300;
+window_size = 4;
 n_facies = 2^(3^2);
 
 P_hor = [0.9 0.15;
@@ -169,7 +179,7 @@ P_ver = [0.75 0.25;
 
 initial_facies = simulate_markov_2Dchain(P_hor,P_ver,ones(I,J,2));
 for f = 1:n_e
-    [ m(:,f) ] = reshape( mean(mu_m) + 1*sqrt(C_m(1)) * FFT_MA_3D( correlation_function1, randn(I,J)),I*J,1);
+    [ m_gm(:,f) ] = reshape( mean(mu_m) + 1*sqrt(C_m(1)) * FFT_MA_3D( correlation_function1, randn(I,J)),I*J,1);
 end
 
 random_path = randperm(length(1:J*I));
@@ -177,10 +187,11 @@ random_path = randperm(length(1:J*I));
 i = 2;
 
 prob_post = zeros(I,J);
+m_mean_esmda_gm = zeros(I,J);
 
 figure
 facies_sample = initial_facies;
-for rep = 1:1000
+for rep = 1:n_rep 
 for idx = random_path
        
     [i,j] = ind2sub([I,J],idx );
@@ -198,11 +209,11 @@ for idx = random_path
     
     for f = 1:n_e
         k(f) = (rand <= lambda(2) ) + 1;
-        m(idx,f) = mu_m(:,k(f)) + sqrt(C_m(k(f))) * randn;
+        m_gm(idx,f) = mu_m(:,k(f)) + sqrt(C_m(k(f))) * randn;
     end
     
-    m1 = m(:,k==1);
-    m2 = m(:,k==2);
+    m1 = m_gm(:,k==1);
+    m2 = m_gm(:,k==2);
     
     for it = 1:n_it
         
@@ -242,28 +253,63 @@ for idx = random_path
         lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( G*mu_m_entire(:,2) ), diag(diag(C_dd2 + C_d))  );        
         lambda_esmda = lambda_esmda/sum(lambda_esmda);
         
+        %m_gm = [m1 m2];
+        
         for f = 1:n_e
             l_(f) = (rand <= lambda_esmda(2) ) + 1;                          
-            m(idx,f) = mu_m(:,l_(f)) + sqrt(C_m(l_(f))) * ( m(idx,f) - mu_m(:,k(f)) ) / sqrt(C_m(k(f)));
+            m_gm(idx,f) = mu_m(:,l_(f)) + sqrt(C_m(l_(f))) * ( m_gm(idx,f) - mu_m(:,k(f)) ) / sqrt(C_m(k(f)));
         end
         
         k = l_;    
         
-        m1 = m(:,l_==1);
-        m2 = m(:,l_==2);    
+        m1 = m_gm(:,l_==1);
+        m2 = m_gm(:,l_==2);    
         
     end
     
+    
     facies_sample(i,j) = (rand <= lambda_esmda(2) ) + 1;                          
     prob_post(i,j) = prob_post(i,j) + lambda_esmda(1);
-    
+       
 end
-imagesc(facies_sample)
-drawnow
+m_mean_esmda_gm = m_mean_esmda_gm + reshape(mean(m_gm,2),I,J)/n_rep;
+
 end
 
 figure
 imagesc(1-prob_post)
+
+f = figure;
+f.Position = [500 0 2200 1000];
+subplot(241)
+imagesc(facies)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+title('Facies ref model')
+subplot(242)
+imagesc(porosity)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+caxis([0.06 0.23])
+title('Porosity ref model')
+subplot(243)
+imagesc(m_mean_esmda_gm)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+caxis([0.06 0.23])
+title('ESMDA GM')
+subplot(244)
+imagesc(1-prob_post)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+title('ESMDA FACIES GM')
+subplot(246)
+histogram(porosity)
+xlim([0.06 0.23])
+subplot(247)
+histogram(m_gm(:))
+xlim([0.06 0.23])
+
 
 % ALL POSSIBLE FACIES CONFIGS FROM CHAT GPT
 % configurations = dec2bin(0:2^(window_size * window_size )-1)-'0';
