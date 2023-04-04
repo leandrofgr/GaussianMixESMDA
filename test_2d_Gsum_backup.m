@@ -6,6 +6,7 @@ addpath('Functions')
 
 %% LOAD FACIES MODEL, MODIFY ITS SIZE AND 
 facies = load('facies_model.mat','facies').facies;
+% facies = facies(15:45,24:54);
 facies = facies(22:42,70:90);
 facies = imresize(facies,1);
 facies(facies>1.5) = 2;
@@ -145,10 +146,10 @@ title('ESMDA Unimodal')
 caxis([0 0.02])
 subplot(246)
 histogram(porosity)
-xlim([0.06 0.23])
+xlim([0.0 0.3])
 subplot(247)
 histogram(m_uni(:))
-xlim([0.06 0.23])
+xlim([0.0 0.3])
 
 
 %% GaussianMix ESMDA - Inspired by GM ENKF Dovera)
@@ -167,43 +168,48 @@ xlim([0.06 0.23])
 % trabalhar com todas as possíveis combinações de facies, trabalha apenas
 % com uma quantidade inicialmente amostrada da prior. 
 
-n_e = 200;
+n_e = 100;
 n_it = 1;
 n_rep = 300;
 n_rep_converge = round(0.3*n_rep);
 window_size = 4;
 n_facies = 2^(3^2);
 
-P_hor = [0.9 0.15;
-         0.15 0.85];
+P_hor = [0.75 0.25;
+         0.25 0.75];     
 P_ver = [0.75 0.25;
          0.25 0.75];
 
 
-     % TO DO: IMPROVE, MAKE IT A BIMODAL SAMPLING ACCOUNTING FOR FACIES
 initial_facies = simulate_markov_2Dchain(P_hor,P_ver,ones(I,J,2));
-for f = 1:n_e
-    simulation = FFT_MA_3D( correlation_function1, randn(4*I,4*J));
-    simulation = simulation (1:I,1:J);
-    [ m_gm(:,f) ] =  mean(mu_m) + 1*sqrt(C_m(1)) * simulation(:);
+m_ = zeros(I,J);
+for elem = 1:n_e
+    [ simulation1 ] = mu_m(1) + sqrt(C_m(1)) * FFT_MA_3D( correlation_function1, randn(4*I,4*J));
+    simulation1 = simulation1 (1:I, 1:J);
+    [ simulation2 ] = mu_m(2) + sqrt(C_m(2)) * FFT_MA_3D( correlation_function2, randn(4*I,4*J));
+    simulation2 = simulation2 (1:I, 1:J);
+    m_(initial_facies == 1) = simulation1(initial_facies == 1);
+    m_(initial_facies == 2) = simulation2(initial_facies == 2);
+    m_gm(:,elem) = m_(:);
 end
 
 prob_post = zeros(I,J);
 m_mean_esmda_gm = zeros(I,J);
 facies_sample_prob = zeros(I,J);
+m = zeros(I,J);
 facies_sample = initial_facies;
 
 for rep = 1:n_rep 
-    100*rep/n_rep 
+rep / n_rep 
 random_path = randperm(length(1:J*I));
 
 for idx = random_path
        
     [i,j] = ind2sub([I,J],idx );
     
-    mu_m_ = zeros(size(initial_facies));
-    mu_m_(initial_facies==1) = mu_m(1);
-    mu_m_(initial_facies==2) = mu_m(2);
+    mu_m_ = zeros(size(facies_sample));
+    mu_m_(facies_sample==1) = mu_m(1);
+    mu_m_(facies_sample==2) = mu_m(2);
     
     mu_m_(idx) = mu_m(1);
     mu_m_entire(:,1) = mu_m_(:);
@@ -232,9 +238,7 @@ for idx = random_path
         Ad1 = d1 - mean(d1')';
         C_md1 = Am1*Ad1'/(n_e1 -1);
         C_dd1 = Ad1*Ad1'/(n_e1 -1);
-        
-        m1 = m1 + C_md1 * (( C_dd1 + (n_it) * C_d ) \ ( d_per1 - d1 ) );
-        
+                
         d2 = double( G*m2 );
         d_per2 = d_obs + sqrt(n_it) * sgm * randn(size(d_obs,1),n_e2);
         
@@ -243,8 +247,6 @@ for idx = random_path
         C_md2 = Am2*Ad2'/(n_e2 -1);
         C_dd2 = Ad2*Ad2'/(n_e2 -1);
         
-        m2 = m2 + C_md2 * (( C_dd2 + (n_it) * C_d ) \ ( d_per2 - d2 ) );
-
         
         facies_sample1 = facies_sample;
         facies_sample1(i,j) = 1;
@@ -259,35 +261,49 @@ for idx = random_path
         lambda_esmda = lambda_esmda/sum(lambda_esmda);
                                 
         for f = 1:n_e
-            l_(f) = (rand <= lambda_esmda(2) ) + 1;                          
+            l_(f) = (rand <= lambda_esmda(2) ) + 1;
             m_gm(idx,f) = mu_m(:,l_(f)) + sqrt(C_m(l_(f))) * ( m_gm(idx,f) - mu_m(:,k(f)) ) / sqrt(C_m(k(f)));
         end                
         k = l_;    
                 
+        facies_sample(idx) = (rand <= lambda_esmda(2) ) + 1;
+    
+    
+        
     %end         
     
-    sorted_facies = (rand <= lambda_esmda(2) ) + 1;
-    facies_sample(i,j) = sorted_facies;
-    prob_post(i,j) = prob_post(i,j) + lambda_esmda(1);
-    if sorted_facies ==1
-        m(idx,rep) = m1(idx,1);
-    else
-        m(idx,rep) = m2(idx,1);
-    end
-       
 end
-
+    
+    m_ = zeros(I,J);
+    for elem = 1:n_e
+        [ simulation1 ] = mu_m(1) + sqrt(C_m(1)) * FFT_MA_3D( correlation_function1, randn(4*I,4*J));
+        simulation1 = simulation1 (1:I, 1:J);
+        [ simulation2 ] = mu_m(2) + sqrt(C_m(2)) * FFT_MA_3D( correlation_function2, randn(4*I,4*J));
+        simulation2 = simulation2 (1:I, 1:J);    
+        m_(facies_sample == 1) = simulation1(facies_sample == 1);
+        m_(facies_sample == 2) = simulation2(facies_sample == 2);
+        m_gm(:,elem) = m_(:);
+    end
+    
+    d = double( G*m_gm );
+    d_per = d_obs + sqrt(n_it) * sgm * randn(size(d_obs,1),n_e);
+    Am = m_gm - mean(m_gm')';
+    Ad = d - mean(d')';
+    C_md = Am*Ad'/(n_e-1);
+    C_dd = Ad*Ad'/(n_e-1);
+    m_gm = m_gm + C_md * ( ( C_dd + sqrt(n_it) * C_d ) \ ( d_per - d )) ;
+    
     
     if rep >= n_rep_converge
-        m_mean_esmda_gm = m_mean_esmda_gm + reshape(m(:,rep),I,J)/(n_rep-n_rep_converge);
+        m_mean_esmda_gm = m_mean_esmda_gm + reshape(m_gm(:,1),I,J)/(n_rep-n_rep_converge);
         facies_sample_prob = facies_sample_prob + (facies_sample-1)/(n_rep-n_rep_converge);
     end
-    
-    %subplot(121)
-    %imagesc(facies_sample)
-    %subplot(122)
-    %imagesc(facies_sample_prob)
-    %drawnow
+
+    subplot(121)
+    imagesc(facies_sample)
+    subplot(122)
+    imagesc(facies_sample_prob)
+    drawnow    
     
 end
 
@@ -323,11 +339,28 @@ scatter(X_positions,Y_positions,15,'r')
 title('ESMDA FACIES GM')
 subplot(246)
 histogram(porosity)
-xlim([0.06 0.23])
+xlim([0.0 0.3])
 subplot(247)
-histogram(m(:))
-xlim([0.06 0.23])
+histogram(m_gm)
+xlim([0.0 0.3])
 
+figure
+subplot(131)
+imagesc(facies)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+title('Facies ref model')
+subplot(132)
+imagesc(facies_sample_prob)
+hold all
+scatter(X_positions,Y_positions,15,'r')
+title('Facies 1 probability')
+subplot(133)
+imagesc(facies_sample_prob)
+hold all
+caxis([0.5 0.51])
+scatter(X_positions,Y_positions,15,'r')
+title('Most likely Facies')
 
 % ALL POSSIBLE FACIES CONFIGS FROM CHAT GPT
 % configurations = dec2bin(0:2^(window_size * window_size )-1)-'0';

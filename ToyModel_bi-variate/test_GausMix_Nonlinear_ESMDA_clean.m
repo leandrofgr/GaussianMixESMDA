@@ -322,6 +322,7 @@ for it = 1:n_it
     lambda_esmda(1) = lambda(1) * mvnpdf( d_obs, double( g(mu_m_(:,1)) ), C_dd1 + C_d  );
     lambda_esmda(2) = lambda(2) * mvnpdf( d_obs, double( g(mu_m_(:,2)) ), C_dd2 + C_d  );
     lambda_esmda = lambda_esmda/sum(lambda_esmda);    
+       
     
     for f = 1:size(m,2)
                 
